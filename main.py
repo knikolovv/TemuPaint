@@ -22,14 +22,11 @@ opacity_value_label = None
 def menu_action():
     print("Menu button clicked")
 
-
 def tools_action():
     print("Tools button clicked")
 
-
 def help_action():
     print("Help button clicked")
-
 
 def draw_square():
     square_size = 100
@@ -39,13 +36,15 @@ def draw_square():
     dx = random.randint(0, canvas_width - square_size - 2)
     dy = random.randint(0, canvas_height - square_size - 2)
 
-    dx2, dy2 = dx + square_size, dy + square_size
+    points = [
+        dx, dy,
+        dx + square_size, dy,
+        dx + square_size, dy + square_size,
+        dx, dy + square_size
+    ]
 
-    alpha_color = apply_alpha_to_color(current_color, current_opacity)
-
-    canvas.create_rectangle(dx, dy, dx2, dy2, fill=alpha_color, outline="black", width=current_border_width,
+    canvas.create_polygon(points, fill="white", outline="black", width=current_border_width,
                             tags=("figure", f"opacity_{current_opacity}", f"original_color_{current_color}"))
-
 
 def draw_star():
     outer_radius = 80
@@ -80,19 +79,51 @@ def draw_star():
         canvas.create_polygon(star_polygon, fill=alpha_color, outline="black", width=current_border_width,
                               tags=("figure", star_tag, opacity_tag, original_color_tag))
 
-        for (px, py) in points:
-            canvas.create_line(x_center, y_center, px, py, fill="black", width=current_border_width,
-                               tags=("figure", star_tag))
+def draw_triangle():
+    side_length = 100
+    height = (math.sqrt(3) / 2) * side_length
 
+    canvas_width = canvas.winfo_width()
+    canvas_height = canvas.winfo_height()
+
+    x1 = random.randint(0, canvas_width - side_length)
+    y1 = random.randint(0, canvas_height - int(height))
+
+    points = [
+        x1 + side_length / 2, y1,
+        x1 + side_length, y1 + height,
+        x1, y1 + height
+    ]
+
+    alpha_color = apply_alpha_to_color(current_color, current_opacity)
+
+    canvas.create_polygon(points, fill=alpha_color, outline="black", width=current_border_width,
+                          tags=("figure", f"opacity_{current_opacity}", f"original_color_{current_color}"))
+
+def draw_circle():
+    radius = 50
+    canvas_width = canvas.winfo_width()
+    canvas_height = canvas.winfo_height()
+
+    cx = random.randint(radius, canvas_width - radius)
+    cy = random.randint(radius, canvas_height - radius)
+
+    x1 = cx - radius
+    y1 = cy - radius
+    x2 = cx + radius
+    y2 = cy + radius
+
+    alpha_color = apply_alpha_to_color(current_color, current_opacity)
+
+    canvas.create_oval(x1, y1, x2, y2, fill=alpha_color, outline="black", width=current_border_width,
+                       tags=("figure", f"opacity_{current_opacity}", f"original_color_{current_color}"))
 
 def rgb_to_hex(r, g, b):
     return f'#{r:02x}{g:02x}{b:02x}'
 
-
 def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip('#')
     return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
-
 
 def apply_alpha_to_color(color, opacity):
     if opacity >= 1.0:
@@ -108,13 +139,11 @@ def apply_alpha_to_color(color, opacity):
 
     return rgb_to_hex(blend_r, blend_g, blend_b)
 
-
 def get_original_color(item):
     for tag in canvas.gettags(item):
         if tag.startswith("original_color_"):
             return tag[len("original_color_"):]
     return current_color
-
 
 def set_color(color):
     global current_color
@@ -122,12 +151,10 @@ def set_color(color):
     color_label.config(bg=color)
     change_color_of_selected(color)
 
-
 def update_border_width(value):
     global current_border_width
     current_border_width = int(float(value))
     apply_properties_to_selected()
-
 
 def update_opacity(value):
     global current_opacity
@@ -138,23 +165,17 @@ def update_opacity(value):
 
     apply_properties_to_selected()
 
-
 def change_color_of_selected(new_color):
     for item in selected_items:
-        item_type = canvas.type(item)
-        if item_type in ["rectangle", "polygon"]:
-            old_tags = [t for t in canvas.gettags(item) if not t.startswith("original_color_")]
-            new_tags = old_tags + [f"original_color_{new_color}"]
-            canvas.itemconfig(item, tags=new_tags)
+        old_tags = [t for t in canvas.gettags(item) if not t.startswith("original_color_")]
+        new_tags = old_tags + [f"original_color_{new_color}"]
+        canvas.itemconfig(item, tags=new_tags)
 
-            alpha_color = apply_alpha_to_color(new_color, current_opacity)
-            canvas.itemconfig(item, fill=alpha_color)
-
+        alpha_color = apply_alpha_to_color(new_color, current_opacity)
+        canvas.itemconfig(item, fill=alpha_color)
 
 def apply_properties_to_selected():
     for item in selected_items:
-        item_type = canvas.type(item)
-
         original_color = get_original_color(item)
 
         old_tags = [t for t in canvas.gettags(item) if not t.startswith("opacity_")]
@@ -162,20 +183,12 @@ def apply_properties_to_selected():
 
         alpha_color = apply_alpha_to_color(original_color, current_opacity)
 
-        if item_type in ["rectangle", "polygon"]:
-            canvas.itemconfig(item, fill=alpha_color, width=current_border_width, outline="red", tags=new_tags)
-        elif item_type == "line":
-            canvas.itemconfig(item, width=current_border_width, fill="red", tags=new_tags)
-
+        canvas.itemconfig(item, fill=alpha_color, width=current_border_width, outline="red", tags=new_tags)
 
 def deselect():
     global selected_items
     for item in list(selected_items):
-        item_type = canvas.type(item)
-        if item_type in ["rectangle", "polygon"]:
-            canvas.itemconfig(item, outline="black", width=current_border_width)
-        elif item_type == "line":
-            canvas.itemconfig(item, fill="black", width=current_border_width)
+        canvas.itemconfig(item, outline="black", width=current_border_width)
     selected_items.clear()
 
     if border_width_slider:
@@ -185,15 +198,13 @@ def deselect():
     if opacity_value_label:
         opacity_value_label.config(text=f"{int(current_opacity * 100)}%")
 
-
 def select_item(item):
-    global current_color, current_border_width, current_opacity
+    global current_color, current_border_width
 
     selected_items.add(item)
     item_type = canvas.type(item)
 
-    if item_type in ["rectangle", "polygon"]:
-        # Get original color from tags
+    if item_type in ["rectangle", "polygon","oval"]:
         original_color = get_original_color(item)
         if original_color:
             current_color = original_color
@@ -206,20 +217,14 @@ def select_item(item):
         for tag in canvas.gettags(item):
             if tag.startswith("opacity_"):
                 try:
-                    current_opacity = float(tag.split("_")[1])
-                    opacity_slider.set(current_opacity)
-                    opacity_value_label.config(text=f"{int(current_opacity * 100)}%")
+                    item_opacity = float(tag.split("_")[1])
+                    opacity_slider.set(item_opacity)
+                    opacity_value_label.config(text=f"{int(item_opacity * 100)}%")
                     break
                 except (ValueError, IndexError):
                     pass
 
         canvas.itemconfig(item, outline="red", width=current_border_width)
-    elif item_type == "line":
-        if canvas.itemcget(item, "width"):
-            current_border_width = int(float(canvas.itemcget(item, "width")))
-            border_width_slider.set(current_border_width)
-        canvas.itemconfig(item, fill="red", width=current_border_width)
-
 
 def on_canvas_down(event):
     global start_x, start_y, select_rect, move_start
@@ -249,6 +254,8 @@ def on_canvas_down(event):
         deselect()
         select_rect = canvas.create_rectangle(event.x, event.y, event.x, event.y, outline="blue", dash=(2, 2))
 
+    for item in selected_items:
+        canvas.tag_raise(item)
 
 def on_canvas_drag(event):
     global select_rect, move_start
@@ -260,7 +267,6 @@ def on_canvas_drag(event):
         for item in selected_items:
             canvas.move(item, dx, dy)
         move_start = (event.x, event.y)
-
 
 def on_canvas_release(event):
     global select_rect, move_start
@@ -288,6 +294,52 @@ def on_canvas_release(event):
         canvas.delete(select_rect)
         select_rect = None
     move_start = None
+
+def resize_selected(scale_factor):
+    for item in selected_items:
+        coordinates = canvas.coords(item)
+        if not coordinates:
+            continue
+
+        cx = sum(coordinates[::2]) / (len(coordinates) // 2)
+        cy = sum(coordinates[1::2]) / (len(coordinates) // 2)
+
+        new_coordinates = []
+        for i in range(0, len(coordinates), 2):
+            x = coordinates[i]
+            y = coordinates[i + 1]
+            new_x = cx + (x - cx) * scale_factor
+            new_y = cy + (y - cy) * scale_factor
+            new_coordinates.extend([new_x, new_y])
+
+        canvas.coords(item, *new_coordinates)
+
+
+def rotate_selected(angle_degrees):
+    angle_rad = math.radians(angle_degrees)
+    for item in selected_items:
+
+        if canvas.type(item) == "oval":
+            continue
+
+        coordinates = canvas.coords(item)
+        if not coordinates:
+            continue
+
+        cx = sum(coordinates[::2]) / (len(coordinates) // 2)
+        cy = sum(coordinates[1::2]) / (len(coordinates) // 2)
+
+        new_coordinates = []
+        for i in range(0, len(coordinates), 2):
+            x = coordinates[i]
+            y = coordinates[i + 1]
+            dx = x - cx
+            dy = y - cy
+            new_x = cx + dx * math.cos(angle_rad) - dy * math.sin(angle_rad)
+            new_y = cy + dx * math.sin(angle_rad) + dy * math.cos(angle_rad)
+            new_coordinates.extend([new_x, new_y])
+
+        canvas.coords(item, *new_coordinates)
 
 
 root = tk.Tk()
@@ -323,6 +375,12 @@ square_button.pack(side="left")
 
 star_button = ttk.Button(shape_frame, text="star", command=draw_star)
 star_button.pack(side="left")
+
+triangle_button = ttk.Button(shape_frame, text="triangle", command=draw_triangle)
+triangle_button.pack(side="left")
+
+circle_button = ttk.Button(shape_frame, text="circle", command=draw_circle)
+circle_button.pack(side="left")
 
 properties_frame = ttk.Frame(root, style="Custom.TFrame")
 properties_frame.pack(anchor="n", fill="x")
@@ -368,6 +426,18 @@ opacity_slider.pack(side="left")
 
 opacity_value_label = ttk.Label(opacity_frame, text="100%", width=4)
 opacity_value_label.pack(side="left", padx=5)
+
+resize_up_button = ttk.Button(properties_frame, text="Resize +", command=lambda: resize_selected(1.1))
+resize_up_button.pack(side="left", padx=2)
+
+resize_down_button = ttk.Button(properties_frame, text="Resize -", command=lambda: resize_selected(0.9))
+resize_down_button.pack(side="left", padx=2)
+
+rotate_left_button = ttk.Button(properties_frame, text="⟲ Rotate", command=lambda: rotate_selected(-15))
+rotate_left_button.pack(side="left", padx=2)
+
+rotate_right_button = ttk.Button(properties_frame, text="⟳ Rotate", command=lambda: rotate_selected(15))
+rotate_right_button.pack(side="left", padx=2)
 
 canvas = tk.Canvas(root, bg="white")
 canvas.pack(fill="both", expand=True)
