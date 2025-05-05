@@ -16,17 +16,24 @@ current_color = "#FFFFFF"
 current_border_width = 2
 current_opacity = 1
 
+group_counter = 1
+
+copied_items = []
+
 opacity_value_label = None
 
 
 def menu_action():
     print("Menu button clicked")
 
+
 def tools_action():
     print("Tools button clicked")
 
+
 def help_action():
     print("Help button clicked")
+
 
 def draw_square():
     square_size = 100
@@ -44,7 +51,8 @@ def draw_square():
     ]
 
     canvas.create_polygon(points, fill="white", outline="black", width=current_border_width,
-                            tags=("figure", f"opacity_{current_opacity}", f"original_color_{current_color}"))
+                          tags=("figure", f"opacity_{current_opacity}", f"original_color_{current_color}"))
+
 
 def draw_star():
     outer_radius = 80
@@ -57,7 +65,6 @@ def draw_star():
         x_center = random.randint(outer_radius, canvas_width - outer_radius)
         y_center = random.randint(outer_radius, canvas_height - outer_radius)
 
-        star_tag = f"star_{random.randint(1, 9999)}"
         opacity_tag = f"opacity_{current_opacity}"
         original_color_tag = f"original_color_{current_color}"
 
@@ -77,7 +84,8 @@ def draw_star():
         alpha_color = apply_alpha_to_color(current_color, current_opacity)
 
         canvas.create_polygon(star_polygon, fill=alpha_color, outline="black", width=current_border_width,
-                              tags=("figure", star_tag, opacity_tag, original_color_tag))
+                              tags=("figure", opacity_tag, original_color_tag))
+
 
 def draw_triangle():
     side_length = 100
@@ -100,6 +108,7 @@ def draw_triangle():
     canvas.create_polygon(points, fill=alpha_color, outline="black", width=current_border_width,
                           tags=("figure", f"opacity_{current_opacity}", f"original_color_{current_color}"))
 
+
 def draw_circle():
     radius = 50
     canvas_width = canvas.winfo_width()
@@ -118,12 +127,15 @@ def draw_circle():
     canvas.create_oval(x1, y1, x2, y2, fill=alpha_color, outline="black", width=current_border_width,
                        tags=("figure", f"opacity_{current_opacity}", f"original_color_{current_color}"))
 
+
 def rgb_to_hex(r, g, b):
     return f'#{r:02x}{g:02x}{b:02x}'
+
 
 def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip('#')
     return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+
 
 def apply_alpha_to_color(color, opacity):
     if opacity >= 1.0:
@@ -139,11 +151,13 @@ def apply_alpha_to_color(color, opacity):
 
     return rgb_to_hex(blend_r, blend_g, blend_b)
 
+
 def get_original_color(item):
     for tag in canvas.gettags(item):
         if tag.startswith("original_color_"):
             return tag[len("original_color_"):]
     return current_color
+
 
 def set_color(color):
     global current_color
@@ -151,10 +165,12 @@ def set_color(color):
     color_label.config(bg=color)
     change_color_of_selected(color)
 
+
 def update_border_width(value):
     global current_border_width
     current_border_width = int(float(value))
     apply_properties_to_selected()
+
 
 def update_opacity(value):
     global current_opacity
@@ -165,6 +181,7 @@ def update_opacity(value):
 
     apply_properties_to_selected()
 
+
 def change_color_of_selected(new_color):
     for item in selected_items:
         old_tags = [t for t in canvas.gettags(item) if not t.startswith("original_color_")]
@@ -173,6 +190,7 @@ def change_color_of_selected(new_color):
 
         alpha_color = apply_alpha_to_color(new_color, current_opacity)
         canvas.itemconfig(item, fill=alpha_color)
+
 
 def apply_properties_to_selected():
     for item in selected_items:
@@ -184,6 +202,7 @@ def apply_properties_to_selected():
         alpha_color = apply_alpha_to_color(original_color, current_opacity)
 
         canvas.itemconfig(item, fill=alpha_color, width=current_border_width, outline="red", tags=new_tags)
+
 
 def deselect():
     global selected_items
@@ -198,13 +217,27 @@ def deselect():
     if opacity_value_label:
         opacity_value_label.config(text=f"{int(current_opacity * 100)}%")
 
+
 def select_item(item):
     global current_color, current_border_width
+
+    if item in selected_items:
+        return
+
+    selected_items.add(item)
+
+    group_tags = [tag for tag in canvas.gettags(item) if tag.startswith("group_")]
+    if group_tags:
+        group_tag = group_tags[0]
+        group_items = canvas.find_withtag(group_tag)
+        for group_item in group_items:
+            if group_item not in selected_items:
+                select_item(group_item)
 
     selected_items.add(item)
     item_type = canvas.type(item)
 
-    if item_type in ["rectangle", "polygon","oval"]:
+    if item_type in ["rectangle", "polygon", "oval"]:
         original_color = get_original_color(item)
         if original_color:
             current_color = original_color
@@ -226,6 +259,7 @@ def select_item(item):
 
         canvas.itemconfig(item, outline="red", width=current_border_width)
 
+
 def on_canvas_down(event):
     global start_x, start_y, select_rect, move_start
     start_x, start_y = event.x, event.y
@@ -235,21 +269,17 @@ def on_canvas_down(event):
     figure_items = [item for item in clicked_items if "figure" in canvas.gettags(item)]
 
     if figure_items:
-
-        star_tags = [tag for tag in canvas.gettags(figure_items[-1]) if tag.startswith("star_")]
-        if star_tags:
-
-            star_tag = star_tags[0]
-            items_to_select = canvas.find_withtag(star_tag)
-
-            if figure_items[-1] not in selected_items:
-                deselect()
-                for item in items_to_select:
-                    select_item(item)
-
-        if figure_items[-1] not in selected_items:
+        last_item = figure_items[-1]
+        group_tags = [tag for tag in canvas.gettags(last_item) if tag.startswith("group_")]
+        if last_item not in selected_items:
             deselect()
-            select_item(figure_items[-1])
+
+        if group_tags:
+            for item in canvas.find_withtag(group_tags[0]):
+                select_item(item)
+        else:
+            select_item(last_item)
+
     else:
         deselect()
         select_rect = canvas.create_rectangle(event.x, event.y, event.x, event.y, outline="blue", dash=(2, 2))
@@ -257,16 +287,19 @@ def on_canvas_down(event):
     for item in selected_items:
         canvas.tag_raise(item)
 
+
 def on_canvas_drag(event):
     global select_rect, move_start
     if select_rect:
         canvas.coords(select_rect, start_x, start_y, event.x, event.y)
+
     elif selected_items and move_start:
         dx = event.x - move_start[0]
         dy = event.y - move_start[1]
         for item in selected_items:
             canvas.move(item, dx, dy)
         move_start = (event.x, event.y)
+
 
 def on_canvas_release(event):
     global select_rect, move_start
@@ -277,23 +310,16 @@ def on_canvas_release(event):
         if y1 > y2: y1, y2 = y2, y1
         items = canvas.find_overlapping(x1, y1, x2, y2)
 
-        star_tags = set()
-
         for item in items:
             item_tags = canvas.gettags(item)
 
-            if "figure" in item_tags or any(tag.startswith("star_") for tag in item_tags):
-                star_tags.update([tag for tag in item_tags if tag.startswith("star_")])
-                select_item(item)
-
-        for star_tag in star_tags:
-            star_items = canvas.find_withtag(star_tag)
-            for item in star_items:
+            if "figure" in item_tags:
                 select_item(item)
 
         canvas.delete(select_rect)
         select_rect = None
     move_start = None
+
 
 def resize_selected(scale_factor):
     for item in selected_items:
@@ -342,9 +368,110 @@ def rotate_selected(angle_degrees):
         canvas.coords(item, *new_coordinates)
 
 
+def group_selected():
+    global group_counter
+    if not selected_items:
+        return
+
+    existing_group_tag = None
+    for item in selected_items:
+        for tag in canvas.gettags(item):
+            if tag.startswith("group_"):
+                existing_group_tag = tag
+                break
+        if existing_group_tag:
+            break
+
+    if existing_group_tag:
+        group_tag = existing_group_tag
+    else:
+        group_tag = f"group_{group_counter}"
+        group_counter += 1
+
+    for item in selected_items:
+        current_tags = canvas.gettags(item)
+        if group_tag not in current_tags:
+            new_tags = current_tags + (group_tag,)
+            canvas.itemconfig(item, tags=new_tags)
+
+
+def regroup_selected():
+    for item in selected_items:
+        current_tags = canvas.gettags(item)
+        new_tags = tuple(tag for tag in current_tags if not tag.startswith("group_"))
+        canvas.itemconfig(item, tags=new_tags)
+
+
+def on_key_press(event):
+    if event.keysym == "Up" and event.state & 0x04:
+        resize_selected(1.1)
+    elif event.keysym == "Down" and event.state & 0x04:
+        resize_selected(0.9)
+    elif event.keysym == "Left" and event.state & 0x04:
+        rotate_selected(-15)
+    elif event.keysym == "Right" and event.state & 0x04:
+        rotate_selected(15)
+    elif event.keysym.lower() == "g" and event.state & 0x04:
+        group_selected()
+    elif event.keysym.lower() == "c" and event.state & 0x04:
+        copy_selected()
+    elif event.keysym.lower() == "v" and event.state & 0x04:
+        paste_copied()
+
+
+def copy_selected():
+    global copied_items
+    copied_items = list(selected_items)
+
+
+def paste_copied():
+    global copied_items, group_counter
+    if not copied_items:
+        return
+
+    deselect()
+    new_items = []
+
+    new_group_tag = f"group_{group_counter}"
+    group_counter += 1
+
+    for item in copied_items:
+        item_type = canvas.type(item)
+        coords = canvas.coords(item)
+        new_coords = []
+
+        for i in range(0, len(coords), 2):
+            new_coords.append(coords[i] + 25)
+            new_coords.append(coords[i + 1])
+
+        tags = [tag for tag in canvas.gettags(item) if not tag.startswith("group_")]
+        tags.append(new_group_tag)
+
+        fill = canvas.itemcget(item, "fill")
+        outline = canvas.itemcget(item, "outline")
+        width = float(canvas.itemcget(item, "width"))
+
+        if item_type == "oval":
+            new_item = canvas.create_oval(*new_coords, fill=fill, outline=outline, width=width, tags=tags)
+        elif item_type == "polygon":
+            new_item = canvas.create_polygon(*new_coords, fill=fill, outline=outline, width=width, tags=tags)
+        elif item_type == "rectangle":
+            new_item = canvas.create_rectangle(*new_coords, fill=fill, outline=outline, width=width, tags=tags)
+        else:
+            continue
+
+        new_items.append(new_item)
+
+    for item in new_items:
+        select_item(item)
+
+
 root = tk.Tk()
 root.title("Graphic Editor")
-root.geometry("1280x720")
+root.geometry("1600x900")
+root.bind("<KeyPress>", on_key_press)
+# Added regrouping explicitly here because of Windows reserving the alt key for some operations preventing me from using it in the function somehow
+root.bind("<Alt-g>", lambda event: regroup_selected())
 
 style = ThemedStyle(root)
 style.set_theme("equilux")
@@ -438,6 +565,12 @@ rotate_left_button.pack(side="left", padx=2)
 
 rotate_right_button = ttk.Button(properties_frame, text="⟳ Rotate", command=lambda: rotate_selected(15))
 rotate_right_button.pack(side="left", padx=2)
+
+group_button = ttk.Button(properties_frame, text="Group", command=group_selected)
+group_button.pack(side="left", padx=2)
+
+regroup_button = ttk.Button(properties_frame, text="Regroup", command=regroup_selected)
+regroup_button.pack(side="left", padx=2)
 
 canvas = tk.Canvas(root, bg="white")
 canvas.pack(fill="both", expand=True)
