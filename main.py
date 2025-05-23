@@ -6,7 +6,7 @@ from tkinter import ttk
 from ttkthemes import ThemedStyle
 from tkinter import filedialog
 
-selected_items = set()
+selected_items = []
 select_rect = None
 start_x = None
 start_y = None
@@ -16,13 +16,13 @@ colors = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF",
           "#00FFFF", "#FFA500", "#800080", "#008000", "#000000", "#FFFFFF"]
 current_color = "#FFFFFF"
 current_border_width = 2
-current_opacity = 1
+current_tint = 1
 
 group_counter = 1
 
 copied_items = []
 
-opacity_value_label = None
+tint_value_label = None
 
 
 def menu_action():
@@ -36,10 +36,11 @@ def tools_action():
 def help_action():
     print("Help button clicked")
 
+
 def reset_figure_characteristics():
-    global current_border_width,current_opacity
+    global current_border_width, current_tint
     current_border_width = 2
-    current_opacity = 1
+    current_tint = 1
 
 
 def draw_square():
@@ -58,11 +59,11 @@ def draw_square():
         dx, dy + square_size
     ]
 
-    opacity_tag = f"opacity_{current_opacity}"
+    tint_tag = f"tint_{current_tint}"
     original_color_tag = f"original_color_{current_color}"
 
     canvas.create_polygon(points, fill="white", outline="black", width=current_border_width,
-                          tags=("figure", opacity_tag, original_color_tag))
+                          tags=("figure", tint_tag, original_color_tag))
 
 
 def draw_star():
@@ -90,11 +91,11 @@ def draw_star():
         for (px, py) in points:
             star_polygon.extend([px, py])
 
-        opacity_tag = f"opacity_{current_opacity}"
+        tint_tag = f"tint_{current_tint}"
         original_color_tag = f"original_color_{current_color}"
 
         canvas.create_polygon(star_polygon, fill="white", outline="black", width=current_border_width,
-                              tags=("figure", opacity_tag, original_color_tag))
+                              tags=("figure", tint_tag, original_color_tag))
 
 
 def draw_triangle():
@@ -114,11 +115,11 @@ def draw_triangle():
         x1, y1 + height
     ]
 
-    opacity_tag = f"opacity_{current_opacity}"
+    tint_tag = f"tint_{current_tint}"
     original_color_tag = f"original_color_{current_color}"
 
     canvas.create_polygon(points, fill="white", outline="black", width=current_border_width,
-                          tags=("figure", opacity_tag, original_color_tag))
+                          tags=("figure", tint_tag, original_color_tag))
 
 
 def draw_circle():
@@ -135,11 +136,11 @@ def draw_circle():
     x2 = cx + radius
     y2 = cy + radius
 
-    opacity_tag = f"opacity_{current_opacity}"
+    tint_tag = f"tint_{current_tint}"
     original_color_tag = f"original_color_{current_color}"
 
     canvas.create_oval(x1, y1, x2, y2, fill="white", outline="black", width=current_border_width,
-                       tags=("figure", opacity_tag, original_color_tag))
+                       tags=("figure", tint_tag, original_color_tag))
 
 
 def rgb_to_hex(r, g, b):
@@ -151,17 +152,17 @@ def hex_to_rgb(hex_color):
     return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
 
 
-def apply_alpha_to_color(color, opacity):
-    if opacity >= 1.0:
+def apply_alpha_to_color(color, tint):
+    if tint >= 1.0:
         return color
 
     r, g, b = hex_to_rgb(color)
 
     bg_r, bg_g, bg_b = 255, 255, 255
 
-    blend_r = int(r * opacity + bg_r * (1 - opacity))
-    blend_g = int(g * opacity + bg_g * (1 - opacity))
-    blend_b = int(b * opacity + bg_b * (1 - opacity))
+    blend_r = int(r * tint + bg_r * (1 - tint))
+    blend_g = int(g * tint + bg_g * (1 - tint))
+    blend_b = int(b * tint + bg_b * (1 - tint))
 
     return rgb_to_hex(blend_r, blend_g, blend_b)
 
@@ -186,30 +187,31 @@ def update_border_width(value):
     apply_border_width_to_selected()
 
 
-def update_opacity(value):
-    global current_opacity
-    current_opacity = float(value)
-    if opacity_value_label:
-        opacity_value_label.config(text=f"{int(current_opacity * 100)}%")
-    apply_opacity_to_selected()
+def update_tint(value):
+    global current_tint
+    current_tint = float(value)
+    if tint_value_label:
+        tint_value_label.config(text=f"{int(current_tint * 100)}%")
+    apply_tint_to_selected()
 
 
 def change_color_of_selected(new_color):
     for item in selected_items:
-        old_tags = [t for t in canvas.gettags(item) if not t.startswith("original_color_")]
-        new_tags = old_tags + [f"original_color_{new_color}"]
-        canvas.itemconfig(item, tags=new_tags)
+        if get_original_color(item):
+            old_tags = [t for t in canvas.gettags(item) if not t.startswith("original_color_")]
+            new_tags = old_tags + [f"original_color_{new_color}"]
+            canvas.itemconfig(item, tags=new_tags)
 
-        alpha_color = apply_alpha_to_color(new_color, current_opacity)
-        canvas.itemconfig(item, fill=alpha_color)
+            alpha_color = apply_alpha_to_color(new_color, current_tint)
+            canvas.itemconfig(item, fill=alpha_color)
 
 
-def apply_opacity_to_selected():
+def apply_tint_to_selected():
     for item in selected_items:
         original_color = get_original_color(item)
-        old_tags = [t for t in canvas.gettags(item) if not t.startswith("opacity_")]
-        new_tags = old_tags + [f"opacity_{current_opacity}"]
-        alpha_color = apply_alpha_to_color(original_color, current_opacity)
+        old_tags = [t for t in canvas.gettags(item) if not t.startswith("tint_")]
+        new_tags = old_tags + [f"tint_{current_tint}"]
+        alpha_color = apply_alpha_to_color(original_color, current_tint)
         canvas.itemconfig(item, fill=alpha_color, tags=new_tags)
 
 
@@ -229,7 +231,7 @@ def select_item(item):
     if item in selected_items:
         return
 
-    selected_items.add(item)
+    selected_items.append(item)
 
     group_tags = [tag for tag in canvas.gettags(item) if tag.startswith("group_")]
     if group_tags:
@@ -499,7 +501,7 @@ def load_canvas():
                 item_id = None
                 if item["type"] == "polygon":
                     item_id = canvas.create_polygon(item["coords"], fill=item["fill"], outline=item["outline"],
-                                                      width=item["width"])
+                                                    width=item["width"])
                 elif item["type"] == "oval":
                     item_id = canvas.create_oval(item["coords"], fill=item["fill"], outline=item["outline"],
                                                  width=item["width"])
@@ -519,6 +521,7 @@ style = ThemedStyle(root)
 style.set_theme("equilux")
 
 dark_background = "#303030"
+style.configure("Dark.Horizontal.TScale", background=dark_background, troughcolor="#303030")
 
 style.configure("Custom.TFrame", background=dark_background)
 style.configure("TButton", background=dark_background, relief="flat")
@@ -545,16 +548,16 @@ load_button.pack(side="left")
 shape_frame = ttk.Frame(root, style="Custom.TFrame")
 shape_frame.pack(anchor="n", fill="x")
 
-square_button = ttk.Button(shape_frame, text="□", command=draw_square)
+square_button = ttk.Button(shape_frame, text="■", command=draw_square)
 square_button.pack(side="left")
 
-star_button = ttk.Button(shape_frame, text="☆", command=draw_star)
+star_button = ttk.Button(shape_frame, text="★", command=draw_star)
 star_button.pack(side="left")
 
-triangle_button = ttk.Button(shape_frame, text="△", command=draw_triangle)
+triangle_button = ttk.Button(shape_frame, text="▲", command=draw_triangle)
 triangle_button.pack(side="left")
 
-circle_button = ttk.Button(shape_frame, text="○", command=draw_circle)
+circle_button = ttk.Button(shape_frame, text="●", command=draw_circle)
 circle_button.pack(side="left")
 
 properties_frame = ttk.Frame(root, style="Custom.TFrame")
@@ -563,7 +566,7 @@ properties_frame.pack(anchor="n", fill="x")
 color_frame = ttk.Frame(properties_frame, style="Custom.TFrame")
 color_frame.pack(side="left", padx=10)
 
-color_label = ttk.Label(color_frame, text="Color:")
+color_label = ttk.Label(color_frame, background=dark_background, text="Color: ")
 color_label.pack(side="left")
 
 color_label = tk.Label(color_frame, width=3, height=1, bg="#FFFFFF", relief="raised")
@@ -580,27 +583,27 @@ for color in colors:
 border_frame = ttk.Frame(properties_frame, style="Custom.TFrame")
 border_frame.pack(side="left", padx=20)
 
-border_label = ttk.Label(border_frame, text="Border Width:", )
+border_label = ttk.Label(border_frame, background=dark_background, text="Border Width: ")
 border_label.pack(side="left")
 
 border_width_slider = ttk.Scale(border_frame, from_=1, to=5, orient="horizontal",
-                                length=100, command=update_border_width)
+                                length=100, command=update_border_width, style="Dark.Horizontal.TScale")
 border_width_slider.set(current_border_width)
 border_width_slider.pack(side="left")
 
-opacity_frame = ttk.Frame(properties_frame, style="Custom.TFrame")
-opacity_frame.pack(side="left", padx=20)
+tint_frame = ttk.Frame(properties_frame, style="Custom.TFrame")
+tint_frame.pack(side="left", padx=20)
 
-opacity_label = ttk.Label(opacity_frame, text="Opacity:")
-opacity_label.pack(side="left")
+tint_label = ttk.Label(tint_frame, background=dark_background, text="Tint: ")
+tint_label.pack(side="left")
 
-opacity_slider = ttk.Scale(opacity_frame, from_=0.0, to=1.0, orient="horizontal",
-                           length=100, command=update_opacity)
-opacity_slider.set(current_opacity)
-opacity_slider.pack(side="left")
+tint_slider = ttk.Scale(tint_frame, from_=0.0, to=1.0, orient="horizontal",
+                        length=100, command=update_tint, style="Dark.Horizontal.TScale")
+tint_slider.set(current_tint)
+tint_slider.pack(side="left")
 
-opacity_value_label = ttk.Label(opacity_frame, text="100%", width=4)
-opacity_value_label.pack(side="left", padx=5)
+tint_value_label = ttk.Label(tint_frame, background=dark_background, text="100%", width=5)
+tint_value_label.pack(side="left", padx=5)
 
 resize_up_button = ttk.Button(properties_frame, text="Resize +", command=lambda: resize_selected(1.1))
 resize_up_button.pack(side="left", padx=2)
